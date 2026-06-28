@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T } from '../pages/Dashboard';
+import { T } from '../lib/theme';
 
 const STATUS_COLORS = {
   'Em Negociação': T.kpi.leadsNovos,
