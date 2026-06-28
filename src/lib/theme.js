@@ -1,0 +1,23 @@
+export const T = {
+  bg: '#08080E',
+  surface: '#0F0F17',
+  surfaceHov: '#14141E',
+  overlay: '#1A1A26',
+  border: 'rgba(255,255,255,0.07)',
+  borderMid: 'rgba(255,255,255,0.12)',
+  text: '#EEEEF2',
+  textSec: '#8B8B9E',
+  textMuted: '#55556A',
+  accent: '#635BFF',
+  accentDim: 'rgba(99,91,255,0.12)',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  kpi: {
+    leadsNovos: '#38BDF8',
+    abordagem: '#818CF8',
+    fup: '#F59E0B',
+    emNegociacao: '#FB923C',
+    fechados: '#22C55E',
+  },
+};
