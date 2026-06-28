@@ -4,36 +4,13 @@ import { useLeads, useTeamLeads } from '../hooks/useLeads';
 import TabVisaoGeral from '../components/TabVisaoGeral';
 import TabCRM from '../components/TabCRM';
 import TabRelatorios from '../components/TabRelatorios';
-
-export const T = {
-  bg: '#08080E',
-  surface: '#0F0F17',
-  surfaceHov: '#14141E',
-  overlay: '#1A1A26',
-  border: 'rgba(255,255,255,0.07)',
-  borderMid: 'rgba(255,255,255,0.12)',
-  text: '#EEEEF2',
-  textSec: '#8B8B9E',
-  textMuted: '#55556A',
-  accent: '#635BFF',
-  accentDim: 'rgba(99,91,255,0.12)',
-  success: '#22C55E',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  kpi: {
-    leadsNovos: '#38BDF8',
-    abordagem: '#818CF8',
-    fup: '#F59E0B',
-    emNegociacao: '#FB923C',
-    fechados: '#22C55E',
-  },
-};
+import { T } from '../lib/theme';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const formatDateBR = (s) => {
   if (!s) return '';
-  const [y, m, d] = s.split('-');
-  return `${d}/${m}/${y}`;
+  const parts = s.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
 };
 
 export default function Dashboard({ profile, isAdmin, onSignOut }) {
@@ -68,7 +45,7 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
       kpis: teamKpisHook.teamKpis.filter((k) => k.user_id === viewMode),
       leads: teamLeadsHook.teamLeads.filter((l) => l.user_id === viewMode),
       readOnly: true,
-      label: vendedor?.nome || 'Vendedor',
+      label: vendedor ? vendedor.nome : 'Vendedor',
     };
   };
 
@@ -87,7 +64,7 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
       <header
         style={{
           height: 52,
-          borderBottom: `1px solid ${T.border}`,
+          borderBottom: '1px solid ' + T.border,
           background: T.surface,
           display: 'flex',
           alignItems: 'center',
@@ -164,7 +141,7 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
             onChange={(e) => setViewMode(e.target.value)}
             style={{
               background: T.bg,
-              border: `1px solid ${T.border}`,
+              border: '1px solid ' + T.border,
               borderRadius: 6,
               color: T.text,
               fontSize: 12,
@@ -192,7 +169,7 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
             onClick={onSignOut}
             style={{
               background: 'transparent',
-              border: `1px solid ${T.border}`,
+              border: '1px solid ' + T.border,
               borderRadius: 6,
               color: T.textSec,
               fontSize: 12,
