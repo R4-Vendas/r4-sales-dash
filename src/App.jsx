@@ -1,41 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
 
 export default function App() {
-  const [log, setLog] = useState('Iniciando...\n');
+  const { session, profile, loading, isAdmin, signOut } = useAuth();
 
-  useEffect(() => {
-    const append = (msg) => setLog((prev) => prev + msg + '\n');
+  if (loading) {
+    return <div style={{ color: 'white', padding: 40 }}>Carregando…</div>;
+  }
 
-    window.onerror = (msg, src, line, col, err) => {
-      append('ERRO GLOBAL: ' + msg + ' linha ' + line);
-      return true;
-    };
+  if (!session || !profile) {
+    return <LoginPage />;
+  }
 
-    append('Importando useAuth...');
-    import('./hooks/useAuth').then((mod) => {
-      append('useAuth importado: ' + (mod.useAuth ? 'sim' : 'não'));
-    }).catch((e) => {
-      append('ERRO ao importar useAuth: ' + e.message);
-    });
-
-    append('Importando LoginPage...');
-    import('./pages/LoginPage').then((mod) => {
-      append('LoginPage importado: ' + (mod.default ? 'sim' : 'não'));
-    }).catch((e) => {
-      append('ERRO ao importar LoginPage: ' + e.message);
-    });
-
-    append('Importando Dashboard...');
-    import('./pages/Dashboard').then((mod) => {
-      append('Dashboard importado: ' + (mod.default ? 'sim' : 'não'));
-    }).catch((e) => {
-      append('ERRO ao importar Dashboard: ' + e.message);
-    });
-  }, []);
-
-  return (
-    <pre style={{ color: '#0f0', background: '#000', padding: 20, fontSize: 14, whiteSpace: 'pre-wrap' }}>
-      {log}
-    </pre>
-  );
+  return <Dashboard profile={profile} isAdmin={isAdmin} onSignOut={signOut} />;
 }
