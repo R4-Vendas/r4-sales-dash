@@ -1,16 +1,57 @@
-# R4 Sales Dash
+# 📊 R4 Sales Dash
 
-Dashboard comercial multi-usuário com login, KPIs diários, CRM e relatórios — conectado ao Supabase.
+Dashboard comercial para acompanhamento de desempenho da equipe de vendas.
 
-## Papéis de usuário
-- **vendedor**: vê e edita apenas os próprios KPIs e leads
-- **administrador**: vê os próprios dados + pode alternar para "Consolidado da equipe" ou um vendedor específico (somente leitura nesses casos)
+## Funcionalidades
 
-## Estrutura do projeto
-- `src/lib/supabase.js` → conexão com o banco de dados
-- `src/hooks/` → lógica de autenticação, KPIs e leads
-- `src/pages/LoginPage.jsx` → tela de login
-- `src/pages/Dashboard.jsx` → layout principal + navegação
-- `src/components/` → as 3 abas (Visão Geral, CRM, Relatórios)
-- `supabase/schema.sql` → script SQL do banco (já executado)
-teste deploy
+* Login por usuário
+* Registro de KPIs diários
+* CRM para gerenciamento de leads
+* Relatórios mensais
+* Indicadores de conversão e faturamento
+* Visualização individual e consolidada da equipe
+
+## Perfis
+
+**Vendedor**
+
+* Gerencia apenas seus próprios KPIs e leads.
+
+**Administrador**
+
+* Visualiza seus dados, o consolidado da equipe e os resultados individuais de cada vendedor.
+
+## Executando o projeto
+
+```bash
+npm install
+npm run dev
+```
+
+A aplicação estará disponível em:
+
+```text
+http://localhost:5173
+```
+
+## Estrutura
+
+```text
+src/
+├── components/
+├── hooks/
+├── lib/
+├── pages/
+├── App.jsx
+└── main.jsx
+```
+
+## Banco de Dados
+
+O projeto utiliza Supabase.
+
+O script de criação das tabelas está disponível em:
+
+```text
+supabase/schema.sql
+```
