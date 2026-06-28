@@ -211,26 +211,32 @@ function MetricTile({ label, value, sub, color, progress }) {
 export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDay, isOwnView }) {
   const normalizedKpis = kpis.map(normalizeKpi);
   const todayStr = today();
-  const todayKpi = normalizedKpis.find((k) => k.date === todayStr) || {};
 
-  const [current, setCurrent] = useState({
-    leadsNovos: todayKpi.leadsNovos || 0,
-    abordagem: todayKpi.abordagem || 0,
-    fup: todayKpi.fup || 0,
-    emNegociacao: todayKpi.emNegociacao || 0,
-    fechados: todayKpi.fechados || 0,
-  });
+  // Soma de TODOS os registros de hoje no conjunto recebido (cobre tanto
+  // "Meus dados" -- 1 registro -- quanto "Consolidado"/"Vendedor X" -- N registros).
+  const todayAggregate = normalizedKpis
+    .filter((k) => k.date === todayStr)
+    .reduce(
+      (a, k) => ({
+        leadsNovos: a.leadsNovos + (k.leadsNovos || 0),
+        abordagem: a.abordagem + (k.abordagem || 0),
+        fup: a.fup + (k.fup || 0),
+        emNegociacao: a.emNegociacao + (k.emNegociacao || 0),
+        fechados: a.fechados + (k.fechados || 0),
+      }),
+      { leadsNovos: 0, abordagem: 0, fup: 0, emNegociacao: 0, fechados: 0 }
+    );
+
+  // Estado local só é usado no modo editável ("Meus dados"). Em modo
+  // readOnly, os cards exibem direto o todayAggregate recalculado a cada render.
+  const [current, setCurrent] = useState(todayAggregate);
 
   useEffect(() => {
-    const t = normalizedKpis.find((k) => k.date === todayStr);
-    if (t) {
-      setCurrent({
-        leadsNovos: t.leadsNovos, abordagem: t.abordagem, fup: t.fup,
-        emNegociacao: t.emNegociacao, fechados: t.fechados,
-      });
-    }
+    setCurrent(todayAggregate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(normalizedKpis.find((k) => k.date === todayStr))]);
+  }, [readOnly, viewLabel, JSON.stringify(todayAggregate)]);
+
+  const displayValues = readOnly ? todayAggregate : current;
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(false);
@@ -273,8 +279,8 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
     if (period === 'semanal') {
       const sw = startOfWeek(now), ew = endOfWeek(now);
       return daysInRange(sw, ew).map((d) => {
-        const k = normalizedKpis.find((x) => x.date === d) || {};
-        return Object.assign({ name: formatDateBR(d).slice(0, 5) }, aggregate([k]));
+        const rows = normalizedKpis.filter((x) => x.date === d);
+        return Object.assign({ name: formatDateBR(d).slice(0, 5) }, aggregate(rows));
       });
     }
     return weeksOfMonth(now.getFullYear(), now.getMonth()).map((w, i) =>
@@ -304,7 +310,7 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
       <Section title={readOnly ? ('KPIs · ' + formatDateBR(todayStr)) : ('KPIs de hoje · ' + formatDateBR(todayStr))}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {Object.keys(KPI_LABELS).map((k) => (
-            <KpiCard key={k} kpiKey={k} value={current[k]} onChange={handleChange} readOnly={readOnly} />
+            <KpiCard key={k} kpiKey={k} value={displayValues[k]} onChange={handleChange} readOnly={readOnly} />
           ))}
         </div>
 
