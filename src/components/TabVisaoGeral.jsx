@@ -1,260 +1,306 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts';
+import { useState } from 'react';
 import { T } from '../pages/Dashboard';
 
-const KPI_LABELS = {
-  leadsNovos: 'Leads Novos',
-  abordagem: 'Abordagem',
-  fup: 'FUP',
-  emNegociacao: 'Em Negociação',
-  fechados: 'Fechados',
+const STATUS_COLORS = {
+  'Em Negociação': T.kpi.leadsNovos,
+  FUP: T.warning,
+  Fechado: T.success,
+  Perdido: T.danger,
 };
 
-const MONTH_NAMES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+const STATUS_OPTS = [
+  { value: '', label: 'Selecione' },
+  { value: 'Em Negociação', label: 'Em Negociação' },
+  { value: 'FUP', label: 'FUP' },
+  { value: 'Fechado', label: 'Fechado' },
+  { value: 'Perdido', label: 'Perdido' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const EMPTY = { nome: '', email: '', telefone: '', status: '', dataEntrada: '', negocio: '', valor: '' };
+
 const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatDateBR = (s) => { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
 
-const startOfWeek = (date) => {
-  const d = new Date(date);
-  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-};
-const endOfWeek = (date) => {
-  const s = new Date(startOfWeek(date));
-  s.setDate(s.getDate() + 6);
-  return s.toISOString().slice(0, 10);
-};
-const daysInRange = (start, end) => {
-  const days = [], cur = new Date(start), last = new Date(end);
-  while (cur <= last) { days.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
-  return days;
-};
-const weeksOfMonth = (year, month) => {
-  const weeks = [];
-  let cur = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  while (cur <= last) {
-    const wStart = cur.toISOString().slice(0, 10);
-    const wEnd = new Date(Math.min(new Date(endOfWeek(cur)).getTime(), last.getTime())).toISOString().slice(0, 10);
-    weeks.push({ start: wStart, end: wEnd });
-    cur = new Date(new Date(wEnd).getTime() + 86400000);
-  }
-  return weeks;
+const validateLead = (l) => {
+  const e = {};
+  if (!l.nome.trim()) e.nome = 'Obrigatório';
+  if (!l.email.trim()) e.email = 'Obrigatório';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l.email)) e.email = 'E-mail inválido';
+  if (!l.telefone.trim()) e.telefone = 'Obrigatório';
+  if (!l.status) e.status = 'Obrigatório';
+  if (!l.dataEntrada) e.dataEntrada = 'Obrigatório';
+  if (!l.negocio.trim()) e.negocio = 'Obrigatório';
+  if (!l.valor || isNaN(parseFloat(l.valor))) e.valor = 'Valor numérico obrigatório';
+  return e;
 };
 
-const normalizeKpi = (row) => ({
-  date: row.data,
-  leadsNovos: row.leads_novos || 0,
-  abordagem: row.abordagem || 0,
-  fup: row.fup || 0,
-  emNegociacao: row.em_negociacao || 0,
-  fechados: row.fechados || 0,
+const toFormShape = (row) => ({
+  id: row.id,
+  nome: row.nome,
+  email: row.email,
+  telefone: row.telefone,
+  status: row.status,
+  dataEntrada: row.data_entrada,
+  negocio: row.negocio,
+  valor: String(row.valor),
 });
 
 function Card({ children, style = {} }) {
-  return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '20px 24px', ...style }}>
-      {children}
-    </div>
-  );
+  return <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '20px 24px', ...style }}>{children}</div>;
 }
-function Label({ children, color, style = {} }) {
-  return (
-    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: color || T.textSec, ...style }}>
-      {children}
-    </div>
-  );
+function Label({ children }) {
+  return <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.textSec }}>{children}</div>;
 }
-function Btn({ children, onClick, style = {}, disabled = false }) {
+function Btn({ children, onClick, variant = 'primary', style = {}, small = false }) {
   const [hov, setHov] = useState(false);
+  const variants = {
+    primary: { background: hov ? '#7B74FF' : T.accent, color: '#fff' },
+    danger: { background: hov ? '#ff6b6b' : T.danger, color: '#fff' },
+    ghost: { background: 'transparent', color: hov ? T.text : T.textSec, border: `1px solid ${hov ? T.borderMid : T.border}` },
+  };
   return (
     <button
-      onClick={disabled ? undefined : onClick}
+      onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{
-        border: 'none', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
-        fontWeight: 600, fontSize: 13, padding: '8px 18px',
-        background: hov ? '#7B74FF' : T.accent, color: '#fff',
-        opacity: disabled ? 0.5 : 1,
-        boxShadow: hov && !disabled ? `0 0 0 3px ${T.accentDim}` : 'none',
-        transition: 'all 0.15s', ...style,
-      }}
+      style={{ border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: small ? 12 : 13, padding: small ? '5px 12px' : '8px 18px', transition: 'all 0.15s', ...variants[variant], ...style }}
     >
       {children}
     </button>
   );
 }
-function Toggle({ options, value, onChange }) {
+function Pill({ status }) {
+  const color = STATUS_COLORS[status] || T.textSec;
   return (
-    <div style={{ display: 'flex', background: T.bg, borderRadius: 7, padding: 3, gap: 2, border: `1px solid ${T.border}` }}>
-      {options.map((o) => {
-        const active = value === o.value;
-        return (
-          <button
-            key={o.value}
-            onClick={() => onChange(o.value)}
-            style={{
-              background: active ? T.surface : 'transparent',
-              color: active ? T.text : T.textSec,
-              border: active ? `1px solid ${T.border}` : '1px solid transparent',
-              borderRadius: 5, padding: '4px 13px', fontSize: 12,
-              fontWeight: active ? 600 : 400, cursor: 'pointer',
-            }}
-          >
-            {o.label}
-          </button>
-        );
-      })}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: color + '18', border: `1px solid ${color}30`, borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      {status}
+    </span>
+  );
+}
+function Input({ label, value, onChange, type = 'text', placeholder = '', error = '', style = {} }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, ...style }}>
+      {label && <Label>{label}</Label>}
+      <input
+        type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        style={{
+          background: T.bg, border: `1px solid ${error ? T.danger : focus ? T.borderMid : T.border}`, borderRadius: 6,
+          color: T.text, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%', boxSizing: 'border-box',
+          boxShadow: focus ? `0 0 0 3px ${error ? T.danger + '20' : T.accentDim}` : 'none',
+        }}
+      />
+      {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
     </div>
   );
 }
-function Section({ title, action, children, style = {} }) {
+function Select({ label, value, onChange, options, error = '', style = {} }) {
+  const [focus, setFocus] = useState(false);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, ...style }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          {title}
-        </span>
-        {action}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, ...style }}>
+      {label && <Label>{label}</Label>}
+      <select
+        value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        style={{
+          background: T.bg, border: `1px solid ${error ? T.danger : focus ? T.borderMid : T.border}`, borderRadius: 6,
+          color: value ? T.text : T.textSec, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%',
+          boxSizing: 'border-box', cursor: 'pointer', boxShadow: focus ? `0 0 0 3px ${T.accentDim}` : 'none',
+        }}
+      >
+        {options.map((o) => <option key={o.value} value={o.value} style={{ background: T.surface }}>{o.label}</option>)}
+      </select>
+      {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
+    </div>
+  );
+}
+function Section({ title, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <span style={{ color: T.textSec, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
       {children}
     </div>
   );
 }
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
+function Modal({ title, onClose, children, width = 560 }) {
   return (
-    <div style={{ background: T.overlay, border: `1px solid ${T.borderMid}`, borderRadius: 8, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-      <div style={{ color: T.textSec, fontSize: 11, marginBottom: 7, fontWeight: 600 }}>{label}</div>
-      {payload.map((p) => (
-        <div key={p.dataKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-          <span style={{ color: T.textSec, fontSize: 12 }}>{p.name}</span>
-          <span style={{ color: T.text, fontSize: 12, fontWeight: 600, marginLeft: 'auto', paddingLeft: 12 }}>{p.value}</span>
+    <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.borderMid}`, borderRadius: 12, width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'auto', padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <span style={{ color: T.text, fontSize: 16, fontWeight: 700 }}>{title}</span>
+          <button onClick={onClose} style={{ background: 'transparent', border: `1px solid ${T.border}`, color: T.textSec, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '1px 8px', borderRadius: 6 }}>×</button>
         </div>
-      ))}
-    </div>
-  );
-}
-
-function KpiCard({ kpiKey, value, onChange, readOnly }) {
-  const [editing, setEditing] = useState(false);
-  const [local, setLocal] = useState(String(value));
-  const inputRef = useRef();
-  const color = T.kpi[kpiKey];
-
-  useEffect(() => setLocal(String(value)), [value]);
-  const commit = () => { setEditing(false); onChange(kpiKey, parseInt(local) || 0); };
-
-  return (
-    <div
-      style={{
-        background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${color}`,
-        borderRadius: 10, padding: '18px 20px', flex: 1, minWidth: 150,
-        display: 'flex', flexDirection: 'column', gap: 10,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        <Label color={T.textSec}>{KPI_LABELS[kpiKey]}</Label>
-      </div>
-      <div
-        onClick={() => { if (!readOnly) { setEditing(true); setTimeout(() => inputRef.current?.select(), 40); } }}
-      >
-        {editing && !readOnly ? (
-          <input
-            ref={inputRef} type="number" min={0} value={local}
-            onChange={(e) => { setLocal(e.target.value); onChange(kpiKey, parseInt(e.target.value) || 0); }}
-            onBlur={commit}
-            onKeyDown={(e) => e.key === 'Enter' && commit()}
-            style={{
-              background: 'transparent', border: 'none', borderBottom: `1.5px solid ${color}`,
-              color: T.text, fontSize: 30, fontWeight: 700, width: '100%', outline: 'none',
-              padding: '0 0 2px', fontFamily: 'inherit',
-            }}
-          />
-        ) : (
-          <div style={{ fontSize: 30, fontWeight: 700, color: T.text, cursor: readOnly ? 'default' : 'text', lineHeight: 1.1 }}>
-            {value}
-          </div>
-        )}
+        {children}
       </div>
     </div>
   );
 }
 
-function MetricTile({ label, value, sub, color, progress }) {
-  return (
-    <Card style={{ flex: 1 }}>
-      <Label style={{ marginBottom: 8 }}>{label}</Label>
-      <div style={{ fontSize: 26, fontWeight: 700, color: color || T.text, marginBottom: sub ? 4 : 0 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: T.textMuted }}>{sub}</div>}
-      {progress !== undefined && (
-        <div style={{ marginTop: 10, height: 3, background: T.border, borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{ width: `${Math.min(100, progress)}%`, height: '100%', background: color, borderRadius: 99, transition: 'width 0.5s ease' }} />
-        </div>
-      )}
-    </Card>
-  );
-}
-
-export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDay, isOwnView }) {
-  const normalizedKpis = kpis.map(normalizeKpi);
-  const todayStr = today();
-  const todayKpi = normalizedKpis.find((k) => k.date === todayStr) || {};
-
-  const [current, setCurrent] = useState({
-    leadsNovos: todayKpi.leadsNovos || 0,
-    abordagem: todayKpi.abordagem || 0,
-    fup: todayKpi.fup || 0,
-    emNegociacao: todayKpi.emNegociacao || 0,
-    fechados: todayKpi.fechados || 0,
-  });
-
-  useEffect(() => {
-    const t = normalizedKpis.find((k) => k.date === todayStr);
-    if (t) {
-      setCurrent({
-        leadsNovos: t.leadsNovos, abordagem: t.abordagem, fup: t.fup,
-        emNegociacao: t.emNegociacao, fechados: t.fechados,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(normalizedKpis.find((k) => k.date === todayStr))]);
-
+export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead, deleteLead, isOwnView }) {
+  const [form, setForm] = useState({ ...EMPTY });
+  const [errors, setErrors] = useState({});
+  const [editLead, setEditLead] = useState(null);
+  const [editErrors, setEditErrors] = useState({});
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [fStatus, setFStatus] = useState('');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
+  const [fNeg, setFNeg] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(false);
-  const [chartPeriod, setChartPeriod] = useState('semanal');
-  const [linePeriod, setLinePeriod] = useState('semanal');
-  const now = new Date();
 
-  const handleChange = (k, v) => setCurrent((p) => ({ ...p, [k]: v }));
+  const cutoff60Str = (() => { const d = new Date(); d.setDate(d.getDate() - 60); return d.toISOString().slice(0, 10); })();
+  const sf = (f, v) => setForm((p) => ({ ...p, [f]: v }));
 
-  const handleSave = async () => {
+  const handleAdd = async () => {
+    const errs = validateLead(form);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
     setSaving(true);
-    await saveDay(current);
+    await addLead(form);
     setSaving(false);
-    setToast(true);
-    setTimeout(() => setToast(false), 2500);
+    setForm({ ...EMPTY });
+    setErrors({});
   };
 
-  const aggregate = (rows) =>
-    rows.reduce(
-      (a, k) => ({
-        leadsNovos: a.leadsNovos + (k.leadsNovos || 0),
-        abordagem: a.abordagem + (k.abordagem || 0),
-        fup: a.fup + (k.fup || 0),
-        emNegociacao: a.emNegociacao + (k.emNegociacao || 0),
-        fechados: a.fechados + (k.fechados || 0),
-      }),
-      { leadsNovos: 0, abordagem: 0, fup:
+  const handleEditSave = async () => {
+    const errs = validateLead(editLead);
+    if (Object.keys(errs).length) { setEditErrors(errs); return; }
+    await updateLead(editLead.id, editLead);
+    setEditLead(null);
+    setEditErrors({});
+  };
+
+  const handleDel = async (id) => {
+    await deleteLead(id);
+    setConfirmDel(null);
+  };
+
+  const shapedLeads = leads.map(toFormShape);
+  const filtered = shapedLeads.filter((l) => {
+    if (fStatus && l.status !== fStatus) return false;
+    if (fFrom && l.dataEntrada < fFrom) return false;
+    if (fTo && l.dataEntrada > fTo) return false;
+    if (fNeg && !l.negocio.toLowerCase().includes(fNeg.toLowerCase())) return false;
+    return true;
+  });
+
+  const TH = ({ children }) => (
+    <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textMuted, borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap' }}>
+      {children}
+    </th>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {readOnly && (
+        <div style={{ color: T.accent, fontSize: 12, fontWeight: 600 }}>
+          Visualizando: {viewLabel} · somente leitura
+        </div>
+      )}
+
+      {!readOnly && (
+        <Section title="Novo lead">
+          <Card>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 14 }}>
+              <Input label="Nome" value={form.nome} onChange={(v) => sf('nome', v)} error={errors.nome} />
+              <Input label="E-mail" value={form.email} onChange={(v) => sf('email', v)} error={errors.email} />
+              <Input label="Telefone" value={form.telefone} onChange={(v) => sf('telefone', v)} error={errors.telefone} />
+              <Select label="Status" value={form.status} onChange={(v) => sf('status', v)} options={STATUS_OPTS} error={errors.status} />
+              <Input label="Data de entrada" type="date" value={form.dataEntrada} onChange={(v) => sf('dataEntrada', v)} error={errors.dataEntrada} />
+              <Input label="Negócio" value={form.negocio} onChange={(v) => sf('negocio', v)} error={errors.negocio} placeholder="Ex: Plano Enterprise" />
+              <Input label="Valor (R$)" type="number" value={form.valor} onChange={(v) => sf('valor', v)} error={errors.valor} placeholder="0.00" />
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <Btn onClick={handleAdd} style={{ opacity: saving ? 0.6 : 1 }}>{saving ? 'Salvando…' : 'Adicionar lead'}</Btn>
+            </div>
+          </Card>
+        </Section>
+      )}
+
+      <Section title="Filtros">
+        <Card style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <Select label="Status" value={fStatus} onChange={setFStatus} options={[{ value: '', label: 'Todos' }, ...STATUS_OPTS.slice(1)]} style={{ minWidth: 155 }} />
+            <Input label="Data inicial" type="date" value={fFrom} onChange={setFFrom} style={{ minWidth: 155 }} />
+            <Input label="Data final" type="date" value={fTo} onChange={setFTo} style={{ minWidth: 155 }} />
+            <Input label="Negócio" value={fNeg} onChange={setFNeg} placeholder="Buscar…" style={{ minWidth: 175 }} />
+            <Btn variant="ghost" small onClick={() => { setFStatus(''); setFFrom(''); setFTo(''); setFNeg(''); }} style={{ marginBottom: 1 }}>Limpar</Btn>
+          </div>
+        </Card>
+      </Section>
+
+      <Section title={`${filtered.length} lead${filtered.length !== 1 ? 's' : ''}`}>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>Nenhum lead encontrado.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>{['Nome', 'E-mail', 'Telefone', 'Status', 'Entrada', 'Negócio', 'Valor', readOnly ? '' : ''].map((h) => <TH key={h}>{h}</TH>)}</tr>
+                </thead>
+                <tbody>
+                  {filtered.map((l, i) => {
+                    const old = l.dataEntrada < cutoff60Str;
+                    return (
+                      <tr key={l.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                        <td style={{ padding: '11px 14px', color: T.text, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                          {l.nome}
+                          {old && <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 700, color: T.warning, background: T.warning + '18', border: `1px solid ${T.warning}30`, borderRadius: 4, padding: '1px 5px' }}>+60d</span>}
+                        </td>
+                        <td style={{ padding: '11px 14px', color: T.textSec }}>{l.email}</td>
+                        <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{l.telefone}</td>
+                        <td style={{ padding: '11px 14px' }}><Pill status={l.status} /></td>
+                        <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(l.dataEntrada)}</td>
+                        <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.negocio}</td>
+                        <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatBRL(l.valor)}</td>
+                        {!readOnly && (
+                          <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <Btn small variant="ghost" onClick={() => setEditLead({ ...l })}>Editar</Btn>
+                              <Btn small variant="danger" onClick={() => setConfirmDel(l)}>Excluir</Btn>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </Section>
+
+      {editLead && (
+        <Modal title="Editar lead" onClose={() => setEditLead(null)}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Input label="Nome" value={editLead.nome} onChange={(v) => setEditLead((p) => ({ ...p, nome: v }))} error={editErrors.nome} />
+            <Input label="E-mail" value={editLead.email} onChange={(v) => setEditLead((p) => ({ ...p, email: v }))} error={editErrors.email} />
+            <Input label="Telefone" value={editLead.telefone} onChange={(v) => setEditLead((p) => ({ ...p, telefone: v }))} error={editErrors.telefone} />
+            <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => ({ ...p, status: v }))} options={STATUS_OPTS} error={editErrors.status} />
+            <Input label="Data entrada" type="date" value={editLead.dataEntrada} onChange={(v) => setEditLead((p) => ({ ...p, dataEntrada: v }))} error={editErrors.dataEntrada} />
+            <Input label="Negócio" value={editLead.negocio} onChange={(v) => setEditLead((p) => ({ ...p, negocio: v }))} error={editErrors.negocio} />
+            <Input label="Valor (R$)" type="number" value={editLead.valor} onChange={(v) => setEditLead((p) => ({ ...p, valor: v }))} error={editErrors.valor} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => setEditLead(null)}>Cancelar</Btn>
+            <Btn onClick={handleEditSave}>Salvar</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDel && (
+        <Modal title="Excluir lead" onClose={() => setConfirmDel(null)} width={400}>
+          <p style={{ color: T.textSec, margin: '0 0 22px', fontSize: 14, lineHeight: 1.6 }}>
+            Excluir <strong style={{ color: T.text }}>{confirmDel.nome}</strong>? Esta ação é irreversível.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancelar</Btn>
+            <Btn variant="danger" onClick={() => handleDel(confirmDel.id)}>Excluir</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
