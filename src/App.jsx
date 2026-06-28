@@ -1,17 +1,33 @@
-import { useAuth } from './hooks/useAuth';
-import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
+import { useState, useEffect } from 'react';
 
 export default function App() {
-  const { session, profile, loading, isAdmin, signOut } = useAuth();
+  const [log, setLog] = useState('Iniciando...\n');
 
-  if (loading) {
-    return <div style={{ color: 'white', padding: 40 }}>Carregando…</div>;
-  }
+  useEffect(() => {
+    const append = (msg) => setLog((prev) => prev + msg + '\n');
 
-  if (!session || !profile) {
-    return <LoginPage />;
-  }
+    append('useEffect rodou');
 
-  return <Dashboard profile={profile} isAdmin={isAdmin} onSignOut={signOut} />;
+    window.onerror = (msg, src, line, col, err) => {
+      append('ERRO GLOBAL: ' + msg + ' em ' + src + ':' + line);
+      return true;
+    };
+
+    try {
+      append('Testando import do supabase...');
+      import('./lib/supabase').then((mod) => {
+        append('Supabase importado OK: ' + (mod.supabase ? 'sim' : 'não'));
+      }).catch((e) => {
+        append('ERRO ao importar supabase: ' + e.message);
+      });
+    } catch (e) {
+      append('ERRO síncrono: ' + e.message);
+    }
+  }, []);
+
+  return (
+    <pre style={{ color: '#0f0', background: '#000', padding: 20, fontSize: 14, whiteSpace: 'pre-wrap' }}>
+      {log}
+    </pre>
+  );
 }
