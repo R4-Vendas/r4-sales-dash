@@ -13,3 +13,4 @@ Dashboard comercial multi-usuário com login, KPIs diários, CRM e relatórios �
 - `src/pages/Dashboard.jsx` → layout principal + navegação
 - `src/components/` → as 3 abas (Visão Geral, CRM, Relatórios)
 - `supabase/schema.sql` → script SQL do banco (já executado)
+teste deploy
