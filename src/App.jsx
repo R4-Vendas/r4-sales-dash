@@ -6,23 +6,31 @@ export default function App() {
   useEffect(() => {
     const append = (msg) => setLog((prev) => prev + msg + '\n');
 
-    append('useEffect rodou');
-
     window.onerror = (msg, src, line, col, err) => {
-      append('ERRO GLOBAL: ' + msg + ' em ' + src + ':' + line);
+      append('ERRO GLOBAL: ' + msg + ' linha ' + line);
       return true;
     };
 
-    try {
-      append('Testando import do supabase...');
-      import('./lib/supabase').then((mod) => {
-        append('Supabase importado OK: ' + (mod.supabase ? 'sim' : 'não'));
-      }).catch((e) => {
-        append('ERRO ao importar supabase: ' + e.message);
-      });
-    } catch (e) {
-      append('ERRO síncrono: ' + e.message);
-    }
+    append('Importando useAuth...');
+    import('./hooks/useAuth').then((mod) => {
+      append('useAuth importado: ' + (mod.useAuth ? 'sim' : 'não'));
+    }).catch((e) => {
+      append('ERRO ao importar useAuth: ' + e.message);
+    });
+
+    append('Importando LoginPage...');
+    import('./pages/LoginPage').then((mod) => {
+      append('LoginPage importado: ' + (mod.default ? 'sim' : 'não'));
+    }).catch((e) => {
+      append('ERRO ao importar LoginPage: ' + e.message);
+    });
+
+    append('Importando Dashboard...');
+    import('./pages/Dashboard').then((mod) => {
+      append('Dashboard importado: ' + (mod.default ? 'sim' : 'não'));
+    }).catch((e) => {
+      append('ERRO ao importar Dashboard: ' + e.message);
+    });
   }, []);
 
   return (
