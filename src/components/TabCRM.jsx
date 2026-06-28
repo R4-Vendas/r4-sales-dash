@@ -80,6 +80,7 @@ function Pill({ status }) {
 }
 function Input({ label, value, onChange, type = 'text', placeholder = '', error = '', style = {} }) {
   const [focus, setFocus] = useState(false);
+  const isDate = type === 'date';
   return (
     <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 5 }, style)}>
       {label && <Label>{label}</Label>}
@@ -87,9 +88,19 @@ function Input({ label, value, onChange, type = 'text', placeholder = '', error 
         type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
         style={{
-          background: T.bg, border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border), borderRadius: 6,
-          color: T.text, fontSize: 13, padding: '8px 11px', outline: 'none', width: '100%', boxSizing: 'border-box',
+          background: T.bg,
+          border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border),
+          borderRadius: 6,
+          color: T.text,
+          fontSize: 13,
+          padding: isDate ? '8px 8px' : '8px 11px',
+          outline: 'none',
+          width: '100%',
+          minHeight: 36,
+          boxSizing: 'border-box',
           boxShadow: focus ? '0 0 0 3px ' + (error ? T.danger + '20' : T.accentDim) : 'none',
+          colorScheme: 'dark',
+          WebkitAppearance: isDate ? 'none' : undefined,
         }}
       />
       {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
@@ -280,27 +291,4 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
             <Input label="Telefone" value={editLead.telefone} onChange={(v) => setEditLead((p) => Object.assign({}, p, { telefone: v }))} error={editErrors.telefone} />
             <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => Object.assign({}, p, { status: v }))} options={STATUS_OPTS} error={editErrors.status} />
             <Input label="Data entrada" type="date" value={editLead.dataEntrada} onChange={(v) => setEditLead((p) => Object.assign({}, p, { dataEntrada: v }))} error={editErrors.dataEntrada} />
-            <Input label="Negócio" value={editLead.negocio} onChange={(v) => setEditLead((p) => Object.assign({}, p, { negocio: v }))} error={editErrors.negocio} />
-            <Input label="Valor (R$)" type="number" value={editLead.valor} onChange={(v) => setEditLead((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setEditLead(null)}>Cancelar</Btn>
-            <Btn onClick={handleEditSave}>Salvar</Btn>
-          </div>
-        </Modal>
-      )}
-
-      {confirmDel && (
-        <Modal title="Excluir lead" onClose={() => setConfirmDel(null)} width={400}>
-          <p style={{ color: T.textSec, margin: '0 0 22px', fontSize: 14, lineHeight: 1.6 }}>
-            Excluir <strong style={{ color: T.text }}>{confirmDel.nome}</strong>? Esta ação é irreversível.
-          </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancelar</Btn>
-            <Btn variant="danger" onClick={() => handleDel(confirmDel.id)}>Excluir</Btn>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
+            <Input label="Negócio" value={editLead.negocio} onChange={(v)
