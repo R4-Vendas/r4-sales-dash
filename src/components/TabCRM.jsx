@@ -16,7 +16,7 @@ const STATUS_OPTS = [
   { value: 'Perdido', label: 'Perdido' },
 ];
 
-const EMPTY = { nome: '', email: '', telefone: '', status: '', dataEntrada: '', negocio: '', valor: '' };
+const EMPTY = { nome: '', email: '', telefone: '', status: '', dataEntrada: '', negocio: '', valor: '', observacao: '' };
 
 const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatDateBR = (s) => { if (!s) return ''; const parts = s.split('-'); return parts[2] + '/' + parts[1] + '/' + parts[0]; };
@@ -43,6 +43,7 @@ const toFormShape = (row) => ({
   dataEntrada: row.data_entrada,
   negocio: row.negocio,
   valor: String(row.valor),
+  observacao: row.observacao || '',
 });
 
 function Card({ children, style = {} }) {
@@ -104,6 +105,34 @@ function Input({ label, value, onChange, type = 'text', placeholder = '', error 
         }}
       />
       {error && <span style={{ color: T.danger, fontSize: 11 }}>{error}</span>}
+    </div>
+  );
+}
+function Textarea({ label, value, onChange, placeholder = '', style = {} }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div style={Object.assign({ display: 'flex', flexDirection: 'column', gap: 5 }, style)}>
+      {label && <Label>{label}</Label>}
+      <textarea
+        value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        rows={3}
+        style={{
+          background: T.bg,
+          border: '1px solid ' + (focus ? T.borderMid : T.border),
+          borderRadius: 6,
+          color: T.text,
+          fontSize: 13,
+          padding: '8px 11px',
+          outline: 'none',
+          width: '100%',
+          boxSizing: 'border-box',
+          boxShadow: focus ? '0 0 0 3px ' + T.accentDim : 'none',
+          resize: 'vertical',
+          fontFamily: 'inherit',
+          colorScheme: 'dark',
+        }}
+      />
     </div>
   );
 }
@@ -221,6 +250,9 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
               <Input label="Negócio" value={form.negocio} onChange={(v) => sf('negocio', v)} error={errors.negocio} placeholder="Ex: Plano Enterprise" />
               <Input label="Valor (R$)" type="number" value={form.valor} onChange={(v) => sf('valor', v)} error={errors.valor} placeholder="0.00" />
             </div>
+            <div style={{ marginTop: 14 }}>
+              <Textarea label="Observações" value={form.observacao} onChange={(v) => sf('observacao', v)} placeholder="Desconto solicitado, motivo de objeção, contexto do lead..." />
+            </div>
             <div style={{ marginTop: 18 }}>
               <Btn onClick={handleAdd} style={{ opacity: saving ? 0.6 : 1 }}>{saving ? 'Salvando…' : 'Adicionar lead'}</Btn>
             </div>
@@ -248,7 +280,7 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr>{['Nome', 'E-mail', 'Telefone', 'Status', 'Entrada', 'Negócio', 'Valor', ''].map((h) => <TH key={h}>{h}</TH>)}</tr>
+                  <tr>{['Nome', 'E-mail', 'Telefone', 'Status', 'Entrada', 'Negócio', 'Valor', 'Observações', ''].map((h) => <TH key={h}>{h}</TH>)}</tr>
                 </thead>
                 <tbody>
                   {filtered.map((l, i) => {
@@ -263,8 +295,11 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{l.telefone}</td>
                         <td style={{ padding: '11px 14px' }}><Pill status={l.status} /></td>
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(l.dataEntrada)}</td>
-                        <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.negocio}</td>
+                        <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.negocio}</td>
                         <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatBRL(l.valor)}</td>
+                        <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {l.observacao || <span style={{ color: T.textMuted, fontStyle: 'italic' }}>—</span>}
+                        </td>
                         {!readOnly && (
                           <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', gap: 6 }}>
@@ -291,4 +326,30 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
             <Input label="Telefone" value={editLead.telefone} onChange={(v) => setEditLead((p) => Object.assign({}, p, { telefone: v }))} error={editErrors.telefone} />
             <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => Object.assign({}, p, { status: v }))} options={STATUS_OPTS} error={editErrors.status} />
             <Input label="Data entrada" type="date" value={editLead.dataEntrada} onChange={(v) => setEditLead((p) => Object.assign({}, p, { dataEntrada: v }))} error={editErrors.dataEntrada} />
-            <Input label="Negócio" value={editLead.negocio} onChange={(v)
+            <Input label="Negócio" value={editLead.negocio} onChange={(v) => setEditLead((p) => Object.assign({}, p, { negocio: v }))} error={editErrors.negocio} />
+            <Input label="Valor (R$)" type="number" value={editLead.valor} onChange={(v) => setEditLead((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
+          </div>
+          <div style={{ marginTop: 14 }}>
+            <Textarea label="Observações" value={editLead.observacao} onChange={(v) => setEditLead((p) => Object.assign({}, p, { observacao: v }))} placeholder="Desconto solicitado, motivo de objeção, contexto do lead..." />
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => setEditLead(null)}>Cancelar</Btn>
+            <Btn onClick={handleEditSave}>Salvar</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDel && (
+        <Modal title="Excluir lead" onClose={() => setConfirmDel(null)} width={400}>
+          <p style={{ color: T.textSec, margin: '0 0 22px', fontSize: 14, lineHeight: 1.6 }}>
+            Excluir <strong style={{ color: T.text }}>{confirmDel.nome}</strong>? Esta ação é irreversível.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Cancelar</Btn>
+            <Btn variant="danger" onClick={() => handleDel(confirmDel.id)}>Excluir</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
