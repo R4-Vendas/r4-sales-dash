@@ -36,6 +36,7 @@ export function useLeads(userId) {
       data_entrada: lead.dataEntrada,
       negocio: lead.negocio,
       valor: parseFloat(lead.valor),
+      observacao: lead.observacao || '',
     });
     if (error) {
       console.error('Erro ao adicionar lead:', error.message);
@@ -56,6 +57,7 @@ export function useLeads(userId) {
         data_entrada: lead.dataEntrada,
         negocio: lead.negocio,
         valor: parseFloat(lead.valor),
+        observacao: lead.observacao || '',
       })
       .eq('id', id);
     if (error) {
