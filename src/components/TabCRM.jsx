@@ -24,8 +24,7 @@ const formatDateBR = (s) => { if (!s) return ''; const parts = s.split('-'); ret
 const validateLead = (l) => {
   const e = {};
   if (!l.nome.trim()) e.nome = 'Obrigatório';
-  if (!l.email.trim()) e.email = 'Obrigatório';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l.email)) e.email = 'E-mail inválido';
+  if (l.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l.email)) e.email = 'E-mail inválido';
   if (!l.telefone.trim()) e.telefone = 'Obrigatório';
   if (!l.status) e.status = 'Obrigatório';
   if (!l.dataEntrada) e.dataEntrada = 'Obrigatório';
@@ -37,7 +36,7 @@ const validateLead = (l) => {
 const toFormShape = (row) => ({
   id: row.id,
   nome: row.nome,
-  email: row.email,
+  email: row.email || '',
   telefone: row.telefone,
   status: row.status,
   dataEntrada: row.data_entrada,
@@ -243,7 +242,7 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
           <Card>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 14 }}>
               <Input label="Nome" value={form.nome} onChange={(v) => sf('nome', v)} error={errors.nome} />
-              <Input label="E-mail" value={form.email} onChange={(v) => sf('email', v)} error={errors.email} />
+              <Input label="E-mail (opcional)" value={form.email} onChange={(v) => sf('email', v)} error={errors.email} />
               <Input label="Telefone" value={form.telefone} onChange={(v) => sf('telefone', v)} error={errors.telefone} />
               <Select label="Status" value={form.status} onChange={(v) => sf('status', v)} options={STATUS_OPTS} error={errors.status} />
               <Input label="Data de entrada" type="date" value={form.dataEntrada} onChange={(v) => sf('dataEntrada', v)} error={errors.dataEntrada} />
@@ -291,7 +290,9 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
                           {l.nome}
                           {old && <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 700, color: T.warning, background: T.warning + '18', border: '1px solid ' + T.warning + '30', borderRadius: 4, padding: '1px 5px' }}>+60d</span>}
                         </td>
-                        <td style={{ padding: '11px 14px', color: T.textSec }}>{l.email}</td>
+                        <td style={{ padding: '11px 14px', color: T.textSec }}>
+                          {l.email || <span style={{ color: T.textMuted, fontStyle: 'italic' }}>—</span>}
+                        </td>
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{l.telefone}</td>
                         <td style={{ padding: '11px 14px' }}><Pill status={l.status} /></td>
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(l.dataEntrada)}</td>
@@ -322,7 +323,7 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
         <Modal title="Editar lead" onClose={() => setEditLead(null)}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Input label="Nome" value={editLead.nome} onChange={(v) => setEditLead((p) => Object.assign({}, p, { nome: v }))} error={editErrors.nome} />
-            <Input label="E-mail" value={editLead.email} onChange={(v) => setEditLead((p) => Object.assign({}, p, { email: v }))} error={editErrors.email} />
+            <Input label="E-mail (opcional)" value={editLead.email} onChange={(v) => setEditLead((p) => Object.assign({}, p, { email: v }))} error={editErrors.email} />
             <Input label="Telefone" value={editLead.telefone} onChange={(v) => setEditLead((p) => Object.assign({}, p, { telefone: v }))} error={editErrors.telefone} />
             <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => Object.assign({}, p, { status: v }))} options={STATUS_OPTS} error={editErrors.status} />
             <Input label="Data entrada" type="date" value={editLead.dataEntrada} onChange={(v) => setEditLead((p) => Object.assign({}, p, { dataEntrada: v }))} error={editErrors.dataEntrada} />
