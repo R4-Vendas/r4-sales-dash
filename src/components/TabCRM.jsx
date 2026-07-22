@@ -90,13 +90,9 @@ function Input({ label, value, onChange, type = 'text', placeholder = '', error 
         style={{
           background: T.bg,
           border: '1px solid ' + (error ? T.danger : focus ? T.borderMid : T.border),
-          borderRadius: 6,
-          color: T.text,
-          fontSize: 13,
+          borderRadius: 6, color: T.text, fontSize: 13,
           padding: isDate ? '8px 8px' : '8px 11px',
-          outline: 'none',
-          width: '100%',
-          minHeight: 36,
+          outline: 'none', width: '100%', minHeight: 36,
           boxSizing: 'border-box',
           boxShadow: focus ? '0 0 0 3px ' + (error ? T.danger + '20' : T.accentDim) : 'none',
           colorScheme: 'dark',
@@ -119,17 +115,11 @@ function Textarea({ label, value, onChange, placeholder = '', style = {} }) {
         style={{
           background: T.bg,
           border: '1px solid ' + (focus ? T.borderMid : T.border),
-          borderRadius: 6,
-          color: T.text,
-          fontSize: 13,
-          padding: '8px 11px',
-          outline: 'none',
-          width: '100%',
+          borderRadius: 6, color: T.text, fontSize: 13,
+          padding: '8px 11px', outline: 'none', width: '100%',
           boxSizing: 'border-box',
           boxShadow: focus ? '0 0 0 3px ' + T.accentDim : 'none',
-          resize: 'vertical',
-          fontFamily: 'inherit',
-          colorScheme: 'dark',
+          resize: 'vertical', fontFamily: 'inherit', colorScheme: 'dark',
         }}
       />
     </div>
@@ -172,6 +162,62 @@ function Modal({ title, onClose, children, width = 560 }) {
         </div>
         {children}
       </div>
+    </div>
+  );
+}
+function ObsCell({ texto }) {
+  const [open, setOpen] = useState(false);
+  if (!texto) return <span style={{ color: T.textMuted, fontStyle: 'italic' }}>—</span>;
+  return (
+    <div style={{ position: 'relative' }}>
+      <span
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          color: T.textSec, fontSize: 13, cursor: 'pointer',
+          display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          maxWidth: 180, textDecoration: 'underline', textDecorationStyle: 'dotted',
+        }}
+      >
+        {texto}
+      </span>
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: T.surface, border: '1px solid ' + T.borderMid,
+              borderRadius: 12, padding: 24, maxWidth: 420, width: '100%',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textSec, marginBottom: 12 }}>
+              Observações
+            </div>
+            <div style={{ color: T.text, fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {texto}
+            </div>
+            <div style={{ marginTop: 20, textAlign: 'right' }}>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  background: T.accent, color: '#fff', border: 'none',
+                  borderRadius: 6, padding: '8px 20px', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -298,8 +344,8 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(l.dataEntrada)}</td>
                         <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.negocio}</td>
                         <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatBRL(l.valor)}</td>
-                        <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {l.observacao || <span style={{ color: T.textMuted, fontStyle: 'italic' }}>—</span>}
+                        <td style={{ padding: '11px 14px', maxWidth: 180 }}>
+                          <ObsCell texto={l.observacao} />
                         </td>
                         {!readOnly && (
                           <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
