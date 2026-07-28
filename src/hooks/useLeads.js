@@ -12,8 +12,7 @@ export function useLeads(userId) {
       .from('leads_crm')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
+      .order('data_entrada', { ascending: true });
     if (error) {
       console.error('Erro ao buscar leads:', error.message);
     } else {
@@ -94,8 +93,7 @@ export function useTeamLeads(isAdmin) {
     const { data, error } = await supabase
       .from('leads_crm')
       .select('*')
-      .order('created_at', { ascending: false });
-
+      .order('data_entrada', { ascending: true });
     if (error) console.error('Erro ao buscar leads da equipe:', error.message);
     setTeamLeads(data || []);
     setLoading(false);
