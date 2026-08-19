@@ -50,6 +50,7 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
   };
 
   const display = getDisplayData();
+  const isTeamView = viewMode === 'team';
 
   return (
     <div
@@ -209,6 +210,11 @@ export default function Dashboard({ profile, isAdmin, onSignOut }) {
             kpis={display.kpis}
             leads={display.leads}
             viewLabel={display.label}
+            isAdmin={isAdmin}
+            isTeamView={isTeamView}
+            vendedores={teamKpisHook.vendedores}
+            teamKpis={teamKpisHook.teamKpis}
+            teamLeads={teamLeadsHook.teamLeads}
           />
         )}
       </main>
