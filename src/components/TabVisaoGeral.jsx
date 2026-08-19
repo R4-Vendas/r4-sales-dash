@@ -212,10 +212,10 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
   const normalizedKpis = kpis.map(normalizeKpi);
   const todayStr = today();
 
-  // Soma de TODOS os registros de hoje no conjunto recebido (cobre tanto
-  // "Meus dados" -- 1 registro -- quanto "Consolidado"/"Vendedor X" -- N registros).
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
   const todayAggregate = normalizedKpis
-    .filter((k) => k.date === todayStr)
+    .filter((k) => k.date === selectedDate)
     .reduce(
       (a, k) => ({
         leadsNovos: a.leadsNovos + (k.leadsNovos || 0),
@@ -227,14 +227,12 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
       { leadsNovos: 0, abordagem: 0, fup: 0, emNegociacao: 0, fechados: 0 }
     );
 
-  // Estado local só é usado no modo editável ("Meus dados"). Em modo
-  // readOnly, os cards exibem direto o todayAggregate recalculado a cada render.
   const [current, setCurrent] = useState(todayAggregate);
 
   useEffect(() => {
     setCurrent(todayAggregate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, viewLabel, JSON.stringify(todayAggregate)]);
+  }, [readOnly, viewLabel, selectedDate, JSON.stringify(todayAggregate)]);
 
   const displayValues = readOnly ? todayAggregate : current;
 
@@ -248,7 +246,7 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
 
   const handleSave = async () => {
     setSaving(true);
-    await saveDay(current);
+    await saveDay(current, selectedDate);
     setSaving(false);
     setToast(true);
     setTimeout(() => setToast(false), 2500);
@@ -299,6 +297,8 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
     pct: pieTotal > 0 ? ((v / pieTotal) * 100).toFixed(1) : '0.0',
   }));
 
+  const isToday = selectedDate === todayStr;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
       {readOnly && (
@@ -307,7 +307,50 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
         </div>
       )}
 
-      <Section title={readOnly ? ('KPIs · ' + formatDateBR(todayStr)) : ('KPIs de hoje · ' + formatDateBR(todayStr))}>
+      <Section
+        title={readOnly ? 'KPIs · ' + formatDateBR(selectedDate) : 'KPIs · ' + formatDateBR(selectedDate)}
+        action={
+          !readOnly ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Label>Data:</Label>
+              <input
+                type="date"
+                value={selectedDate}
+                max={todayStr}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  background: T.bg,
+                  border: '1px solid ' + T.border,
+                  borderRadius: 6,
+                  color: T.text,
+                  fontSize: 13,
+                  padding: '5px 8px',
+                  outline: 'none',
+                  minHeight: 34,
+                  colorScheme: 'dark',
+                  WebkitAppearance: 'none',
+                }}
+              />
+              {!isToday && (
+                <button
+                  onClick={() => setSelectedDate(todayStr)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid ' + T.border,
+                    borderRadius: 6,
+                    color: T.textSec,
+                    fontSize: 12,
+                    padding: '5px 10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hoje
+                </button>
+              )}
+            </div>
+          ) : null
+        }
+      >
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {Object.keys(KPI_LABELS).map((k) => (
             <KpiCard key={k} kpiKey={k} value={displayValues[k]} onChange={handleChange} readOnly={readOnly} />
@@ -316,7 +359,9 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
 
         {!readOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar dia'}</Btn>
+            <Btn onClick={handleSave} disabled={saving}>
+              {saving ? 'Salvando…' : isToday ? 'Salvar dia' : 'Salvar ' + formatDateBR(selectedDate)}
+            </Btn>
             {toast && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: T.success, fontSize: 12, fontWeight: 600 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.success }} />
