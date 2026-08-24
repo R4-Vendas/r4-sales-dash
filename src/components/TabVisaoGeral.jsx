@@ -60,6 +60,18 @@ const normalizeKpi = (row) => ({
   fechados: row.fechados || 0,
 });
 
+const calcTempoMedio = (leads) => {
+  const fechados = leads.filter((l) => l.status === 'Fechado' && l.data_entrada && l.data_fechamento);
+  if (fechados.length === 0) return null;
+  const totalDias = fechados.reduce((s, l) => {
+    const entrada = new Date(l.data_entrada);
+    const fechamento = new Date(l.data_fechamento);
+    const diff = Math.round((fechamento - entrada) / (1000 * 60 * 60 * 24));
+    return s + (diff >= 0 ? diff : 0);
+  }, 0);
+  return Math.round(totalDias / fechados.length);
+};
+
 function Card({ children, style = {} }) {
   return (
     <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>
@@ -146,7 +158,6 @@ function ChartTooltip({ active, payload, label }) {
     </div>
   );
 }
-
 function KpiCard({ kpiKey, value, onChange, readOnly }) {
   const [editing, setEditing] = useState(false);
   const [local, setLocal] = useState(String(value));
@@ -157,20 +168,16 @@ function KpiCard({ kpiKey, value, onChange, readOnly }) {
   const commit = () => { setEditing(false); onChange(kpiKey, parseInt(local) || 0); };
 
   return (
-    <div
-      style={{
-        background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + color,
-        borderRadius: 10, padding: '18px 20px', flex: 1, minWidth: 150,
-        display: 'flex', flexDirection: 'column', gap: 10,
-      }}
-    >
+    <div style={{
+      background: T.surface, border: '1px solid ' + T.border, borderTop: '2px solid ' + color,
+      borderRadius: 10, padding: '18px 20px', flex: 1, minWidth: 150,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <Label color={T.textSec}>{KPI_LABELS[kpiKey]}</Label>
       </div>
-      <div
-        onClick={() => { if (!readOnly) { setEditing(true); setTimeout(() => inputRef.current && inputRef.current.select(), 40); } }}
-      >
+      <div onClick={() => { if (!readOnly) { setEditing(true); setTimeout(() => inputRef.current && inputRef.current.select(), 40); } }}>
         {editing && !readOnly ? (
           <input
             ref={inputRef} type="number" min={0} value={local}
@@ -192,7 +199,6 @@ function KpiCard({ kpiKey, value, onChange, readOnly }) {
     </div>
   );
 }
-
 function MetricTile({ label, value, sub, color, progress }) {
   return (
     <Card style={{ flex: 1 }}>
@@ -211,7 +217,6 @@ function MetricTile({ label, value, sub, color, progress }) {
 export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDay, isOwnView }) {
   const normalizedKpis = kpis.map(normalizeKpi);
   const todayStr = today();
-
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const todayAggregate = normalizedKpis
@@ -267,6 +272,7 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
   const totalLeadsCRM = leads.length;
   const fechadosCRM = leads.filter((l) => l.status === 'Fechado').length;
   const convLeads = totalLeadsCRM > 0 ? (fechadosCRM / totalLeadsCRM) * 100 : 0;
+  const tempoMedio = calcTempoMedio(leads);
 
   const mStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
   const fatMes = leads
@@ -308,7 +314,7 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
       )}
 
       <Section
-        title={readOnly ? 'KPIs · ' + formatDateBR(selectedDate) : 'KPIs · ' + formatDateBR(selectedDate)}
+        title={'KPIs · ' + formatDateBR(selectedDate)}
         action={
           !readOnly ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -321,27 +327,18 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
                 style={{
                   background: T.bg,
                   border: '1px solid ' + T.border,
-                  borderRadius: 6,
-                  color: T.text,
-                  fontSize: 13,
-                  padding: '5px 8px',
-                  outline: 'none',
-                  minHeight: 34,
-                  colorScheme: 'dark',
-                  WebkitAppearance: 'none',
+                  borderRadius: 6, color: T.text, fontSize: 13,
+                  padding: '5px 8px', outline: 'none', minHeight: 34,
+                  colorScheme: 'dark', WebkitAppearance: 'none',
                 }}
               />
               {!isToday && (
                 <button
                   onClick={() => setSelectedDate(todayStr)}
                   style={{
-                    background: 'transparent',
-                    border: '1px solid ' + T.border,
-                    borderRadius: 6,
-                    color: T.textSec,
-                    fontSize: 12,
-                    padding: '5px 10px',
-                    cursor: 'pointer',
+                    background: 'transparent', border: '1px solid ' + T.border,
+                    borderRadius: 6, color: T.textSec, fontSize: 12,
+                    padding: '5px 10px', cursor: 'pointer',
                   }}
                 >
                   Hoje
@@ -386,6 +383,12 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
             value={formatBRL(fatMes)}
             sub={MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear() + ' · leads fechados'}
             color={T.success}
+          />
+          <MetricTile
+            label="Tempo médio para fechar"
+            value={tempoMedio !== null ? tempoMedio + ' dias' : '—'}
+            sub={tempoMedio !== null ? 'média entre entrada e fechamento' : 'nenhum lead fechado com datas'}
+            color={T.kpi.fup}
           />
         </div>
       </Section>
