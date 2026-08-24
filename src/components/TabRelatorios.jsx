@@ -16,6 +16,18 @@ const KPI_DOT = {
   fechados: T.kpi.fechados,
 };
 
+const calcTempoMedio = (leads) => {
+  const fechados = leads.filter((l) => l.status === 'Fechado' && l.data_entrada && l.data_fechamento);
+  if (fechados.length === 0) return null;
+  const totalDias = fechados.reduce((s, l) => {
+    const entrada = new Date(l.data_entrada);
+    const fechamento = new Date(l.data_fechamento);
+    const diff = Math.round((fechamento - entrada) / (1000 * 60 * 60 * 24));
+    return s + (diff >= 0 ? diff : 0);
+  }, 0);
+  return Math.round(totalDias / fechados.length);
+};
+
 function Card({ children, style = {} }) {
   return <div style={Object.assign({ background: T.surface, border: '1px solid ' + T.border, borderRadius: 10, padding: '20px 24px' }, style)}>{children}</div>;
 }
@@ -34,8 +46,9 @@ function Section({ title, subtitle, children }) {
   );
 }
 
-function MonthReport({ report }) {
+function MonthReport({ report, leads }) {
   const { leadsNovos, abordagem, fup, emNegociacao, fechados, convLeadsCRM, totalCRM, fat, month, year } = report;
+  const tempoMedio = calcTempoMedio(leads);
   const rows = [
     { key: 'leadsNovos', n: leadsNovos, label: 'Leads novos' },
     { key: 'abordagem', n: abordagem, label: 'Abordagens' },
@@ -59,10 +72,11 @@ function MonthReport({ report }) {
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 20 }}>
         {[
           { label: 'Leads → Fechado', value: (convLeadsCRM || 0).toFixed(1) + '%', sub: fechados + ' fechados de ' + totalCRM + ' na base', color: T.kpi.leadsNovos },
           { label: 'Faturamento', value: formatBRL(fat), sub: 'leads com status Fechado', color: T.success },
+          { label: 'Tempo médio p/ fechar', value: tempoMedio !== null ? tempoMedio + ' dias' : '—', sub: tempoMedio !== null ? 'média entrada → fechamento' : 'sem dados suficientes', color: T.kpi.fup },
         ].map((m) => (
           <div key={m.label} style={{ background: m.color + '10', border: '1px solid ' + m.color + '20', borderRadius: 8, padding: '12px 14px' }}>
             <Label style={{ marginBottom: 6 }}>{m.label}</Label>
@@ -91,6 +105,7 @@ function GeralReport({ kpis, leads, vendedores }) {
   const totalFechados = leads.filter((l) => l.status === 'Fechado').length;
   const convGeral = totalLeads > 0 ? (totalFechados / totalLeads) * 100 : 0;
   const fatTotal = leads.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
+  const tempoMedioGeral = calcTempoMedio(leads);
 
   const rows = [
     { key: 'leadsNovos', n: aggTotal.leadsNovos, label: 'Leads novos' },
@@ -115,10 +130,11 @@ function GeralReport({ kpis, leads, vendedores }) {
             </div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 20 }}>
           {[
             { label: 'Conversão geral', value: convGeral.toFixed(1) + '%', sub: totalFechados + ' fechados de ' + totalLeads + ' na base', color: T.kpi.leadsNovos },
             { label: 'Faturamento total', value: formatBRL(fatTotal), sub: 'todos os leads fechados', color: T.success },
+            { label: 'Tempo médio p/ fechar', value: tempoMedioGeral !== null ? tempoMedioGeral + ' dias' : '—', sub: tempoMedioGeral !== null ? 'média entrada → fechamento' : 'sem dados suficientes', color: T.kpi.fup },
           ].map((m) => (
             <div key={m.label} style={{ background: m.color + '10', border: '1px solid ' + m.color + '20', borderRadius: 8, padding: '12px 14px' }}>
               <Label style={{ marginBottom: 6 }}>{m.label}</Label>
@@ -146,15 +162,17 @@ function GeralReport({ kpis, leads, vendedores }) {
               const vFechados = vLeads.filter((l) => l.status === 'Fechado').length;
               const vFat = vLeads.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
               const vConv = vLeads.length > 0 ? (vFechados / vLeads.length) * 100 : 0;
+              const vTempo = calcTempoMedio(vLeads);
               return (
                 <div key={v.id} style={{ border: '1px solid ' + T.border, borderRadius: 8, padding: '14px 16px' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>{v.nome}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
                     {[
                       { label: 'Leads novos', value: vAgg.leadsNovos, color: T.kpi.leadsNovos },
                       { label: 'Fechados (KPI)', value: vAgg.fechados, color: T.kpi.fechados },
                       { label: 'Conversão CRM', value: vConv.toFixed(1) + '%', color: T.kpi.leadsNovos },
                       { label: 'Faturamento', value: formatBRL(vFat), color: T.success },
+                      { label: 'Tempo médio', value: vTempo !== null ? vTempo + 'd' : '—', color: T.kpi.fup },
                     ].map((item) => (
                       <div key={item.label} style={{ background: T.bg, borderRadius: 6, padding: '10px 12px' }}>
                         <Label style={{ marginBottom: 4 }}>{item.label}</Label>
@@ -204,7 +222,7 @@ export default function TabRelatorios({ kpis, leads, viewLabel, isAdmin, isTeamV
     const fechadosMes = leadsDoMes.filter((l) => l.status === 'Fechado').length;
     const convLeadsCRM = totalCRM > 0 ? (fechadosMes / totalCRM) * 100 : 0;
     const fat = leadsDoMes.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
-    return Object.assign({}, agg, { convLeadsCRM, totalCRM, fat, month: m, year: y });
+    return Object.assign({}, agg, { convLeadsCRM, totalCRM, fat, month: m, year: y, leadsDoMes });
   };
 
   const showGeral = isAdmin && isTeamView;
@@ -277,7 +295,7 @@ export default function TabRelatorios({ kpis, leads, viewLabel, isAdmin, isTeamV
               </div>
               <div>
                 {selected ? (
-                  <MonthReport report={getReport(selected)} />
+                  <MonthReport report={getReport(selected)} leads={getReport(selected).leadsDoMes} />
                 ) : (
                   <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
                     <div style={{ color: T.textMuted, fontSize: 13 }}>← Selecione um mês</div>
