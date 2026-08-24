@@ -47,8 +47,18 @@ function Section({ title, subtitle, children }) {
 }
 
 function MonthReport({ report, leads }) {
-  const { leadsNovos, abordagem, fup, emNegociacao, fechados, convLeadsCRM, totalCRM, fat, month, year } = report;
+  const { leadsNovos, abordagem, fup, emNegociacao, fechados, totalCRM, month, year } = report;
   const tempoMedio = calcTempoMedio(leads);
+
+  // Faturamento pelo mês de fechamento
+  const fat = leads
+    .filter((l) => l.status === 'Fechado' && l.data_fechamento)
+    .reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
+
+  // Conversão baseada nos leads do mês
+  const fechadosMes = leads.filter((l) => l.status === 'Fechado').length;
+  const convLeadsCRM = totalCRM > 0 ? (fechadosMes / totalCRM) * 100 : 0;
+
   const rows = [
     { key: 'leadsNovos', n: leadsNovos, label: 'Leads novos' },
     { key: 'abordagem', n: abordagem, label: 'Abordagens' },
@@ -56,6 +66,7 @@ function MonthReport({ report, leads }) {
     { key: 'emNegociacao', n: emNegociacao, label: 'Em negociação' },
     { key: 'fechados', n: fechados, label: 'Vendas fechadas' },
   ];
+
   return (
     <Card>
       <div style={{ marginBottom: 22 }}>
@@ -74,8 +85,8 @@ function MonthReport({ report, leads }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 20 }}>
         {[
-          { label: 'Leads → Fechado', value: (convLeadsCRM || 0).toFixed(1) + '%', sub: fechados + ' fechados de ' + totalCRM + ' na base', color: T.kpi.leadsNovos },
-          { label: 'Faturamento', value: formatBRL(fat), sub: 'leads com status Fechado', color: T.success },
+          { label: 'Leads → Fechado', value: convLeadsCRM.toFixed(1) + '%', sub: fechadosMes + ' fechados de ' + totalCRM + ' na base', color: T.kpi.leadsNovos },
+          { label: 'Faturamento', value: formatBRL(fat), sub: 'por data de fechamento', color: T.success },
           { label: 'Tempo médio p/ fechar', value: tempoMedio !== null ? tempoMedio + ' dias' : '—', sub: tempoMedio !== null ? 'média entrada → fechamento' : 'sem dados suficientes', color: T.kpi.fup },
         ].map((m) => (
           <div key={m.label} style={{ background: m.color + '10', border: '1px solid ' + m.color + '20', borderRadius: 8, padding: '12px 14px' }}>
@@ -104,7 +115,9 @@ function GeralReport({ kpis, leads, vendedores }) {
   const totalLeads = leads.length;
   const totalFechados = leads.filter((l) => l.status === 'Fechado').length;
   const convGeral = totalLeads > 0 ? (totalFechados / totalLeads) * 100 : 0;
-  const fatTotal = leads.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
+  const fatTotal = leads
+    .filter((l) => l.status === 'Fechado' && l.data_fechamento)
+    .reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
   const tempoMedioGeral = calcTempoMedio(leads);
 
   const rows = [
@@ -133,7 +146,7 @@ function GeralReport({ kpis, leads, vendedores }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 20 }}>
           {[
             { label: 'Conversão geral', value: convGeral.toFixed(1) + '%', sub: totalFechados + ' fechados de ' + totalLeads + ' na base', color: T.kpi.leadsNovos },
-            { label: 'Faturamento total', value: formatBRL(fatTotal), sub: 'todos os leads fechados', color: T.success },
+            { label: 'Faturamento total', value: formatBRL(fatTotal), sub: 'por data de fechamento', color: T.success },
             { label: 'Tempo médio p/ fechar', value: tempoMedioGeral !== null ? tempoMedioGeral + ' dias' : '—', sub: tempoMedioGeral !== null ? 'média entrada → fechamento' : 'sem dados suficientes', color: T.kpi.fup },
           ].map((m) => (
             <div key={m.label} style={{ background: m.color + '10', border: '1px solid ' + m.color + '20', borderRadius: 8, padding: '12px 14px' }}>
@@ -160,7 +173,9 @@ function GeralReport({ kpis, leads, vendedores }) {
                 { leadsNovos: 0, fechados: 0 }
               );
               const vFechados = vLeads.filter((l) => l.status === 'Fechado').length;
-              const vFat = vLeads.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
+              const vFat = vLeads
+                .filter((l) => l.status === 'Fechado' && l.data_fechamento)
+                .reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
               const vConv = vLeads.length > 0 ? (vFechados / vLeads.length) * 100 : 0;
               const vTempo = calcTempoMedio(vLeads);
               return (
@@ -217,12 +232,16 @@ export default function TabRelatorios({ kpis, leads, viewLabel, isAdmin, isTeamV
     );
     const mStart = y + '-' + m + '-01';
     const mEnd = new Date(parseInt(y), parseInt(m), 0).toISOString().slice(0, 10);
-    const leadsDoMes = leads.filter((l) => l.data_entrada >= mStart && l.data_entrada <= mEnd);
-    const totalCRM = leadsDoMes.length;
-    const fechadosMes = leadsDoMes.filter((l) => l.status === 'Fechado').length;
-    const convLeadsCRM = totalCRM > 0 ? (fechadosMes / totalCRM) * 100 : 0;
-    const fat = leadsDoMes.filter((l) => l.status === 'Fechado').reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
-    return Object.assign({}, agg, { convLeadsCRM, totalCRM, fat, month: m, year: y, leadsDoMes });
+
+    // Leads cujo fechamento ocorreu neste mês
+    const leadsDoMes = leads.filter((l) => {
+      const dataRef = l.data_fechamento || l.data_entrada;
+      return dataRef >= mStart && dataRef <= mEnd;
+    });
+
+    const totalCRM = leads.filter((l) => l.data_entrada >= mStart && l.data_entrada <= mEnd).length;
+
+    return Object.assign({}, agg, { totalCRM, month: m, year: y, leadsDoMes });
   };
 
   const showGeral = isAdmin && isTeamView;
