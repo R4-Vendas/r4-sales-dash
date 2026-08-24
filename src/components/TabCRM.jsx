@@ -16,7 +16,7 @@ const STATUS_OPTS = [
   { value: 'Perdido', label: 'Perdido' },
 ];
 
-const EMPTY = { nome: '', email: '', telefone: '', status: '', dataEntrada: '', negocio: '', valor: '', observacao: '' };
+const EMPTY = { nome: '', email: '', telefone: '', status: '', dataEntrada: '', dataFechamento: '', negocio: '', valor: '', observacao: '' };
 
 const formatBRL = (v) => (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatDateBR = (s) => { if (!s) return ''; const parts = s.split('-'); return parts[2] + '/' + parts[1] + '/' + parts[0]; };
@@ -28,6 +28,7 @@ const validateLead = (l) => {
   if (!l.telefone.trim()) e.telefone = 'Obrigatório';
   if (!l.status) e.status = 'Obrigatório';
   if (!l.dataEntrada) e.dataEntrada = 'Obrigatório';
+  if (l.status === 'Fechado' && !l.dataFechamento) e.dataFechamento = 'Obrigatório para leads fechados';
   if (!l.negocio.trim()) e.negocio = 'Obrigatório';
   if (!l.valor || isNaN(parseFloat(l.valor))) e.valor = 'Valor numérico obrigatório';
   return e;
@@ -40,6 +41,7 @@ const toFormShape = (row) => ({
   telefone: row.telefone,
   status: row.status,
   dataEntrada: row.data_entrada,
+  dataFechamento: row.data_fechamento || '',
   negocio: row.negocio,
   valor: String(row.valor),
   observacao: row.observacao || '',
@@ -292,6 +294,9 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
               <Input label="Telefone" value={form.telefone} onChange={(v) => sf('telefone', v)} error={errors.telefone} />
               <Select label="Status" value={form.status} onChange={(v) => sf('status', v)} options={STATUS_OPTS} error={errors.status} />
               <Input label="Data de entrada" type="date" value={form.dataEntrada} onChange={(v) => sf('dataEntrada', v)} error={errors.dataEntrada} />
+              {form.status === 'Fechado' && (
+                <Input label="Data de fechamento" type="date" value={form.dataFechamento} onChange={(v) => sf('dataFechamento', v)} error={errors.dataFechamento} />
+              )}
               <Input label="Negócio" value={form.negocio} onChange={(v) => sf('negocio', v)} error={errors.negocio} placeholder="Ex: Plano Enterprise" />
               <Input label="Valor (R$)" type="number" value={form.valor} onChange={(v) => sf('valor', v)} error={errors.valor} placeholder="0.00" />
             </div>
@@ -325,7 +330,7 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr>{['Nome', 'E-mail', 'Telefone', 'Status', 'Entrada', 'Negócio', 'Valor', 'Observações', ''].map((h) => <TH key={h}>{h}</TH>)}</tr>
+                  <tr>{['Nome', 'E-mail', 'Telefone', 'Status', 'Entrada', 'Fechamento', 'Negócio', 'Valor', 'Observações', ''].map((h) => <TH key={h}>{h}</TH>)}</tr>
                 </thead>
                 <tbody>
                   {filtered.map((l, i) => {
@@ -342,6 +347,9 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{l.telefone}</td>
                         <td style={{ padding: '11px 14px' }}><Pill status={l.status} /></td>
                         <td style={{ padding: '11px 14px', color: T.textSec, whiteSpace: 'nowrap' }}>{formatDateBR(l.dataEntrada)}</td>
+                        <td style={{ padding: '11px 14px', color: T.success, whiteSpace: 'nowrap' }}>
+                          {l.dataFechamento ? formatDateBR(l.dataFechamento) : <span style={{ color: T.textMuted, fontStyle: 'italic' }}>—</span>}
+                        </td>
                         <td style={{ padding: '11px 14px', color: T.textSec, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.negocio}</td>
                         <td style={{ padding: '11px 14px', color: T.success, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatBRL(l.valor)}</td>
                         <td style={{ padding: '11px 14px', maxWidth: 180 }}>
@@ -371,8 +379,11 @@ export default function TabCRM({ leads, readOnly, viewLabel, addLead, updateLead
             <Input label="Nome" value={editLead.nome} onChange={(v) => setEditLead((p) => Object.assign({}, p, { nome: v }))} error={editErrors.nome} />
             <Input label="E-mail (opcional)" value={editLead.email} onChange={(v) => setEditLead((p) => Object.assign({}, p, { email: v }))} error={editErrors.email} />
             <Input label="Telefone" value={editLead.telefone} onChange={(v) => setEditLead((p) => Object.assign({}, p, { telefone: v }))} error={editErrors.telefone} />
-            <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => Object.assign({}, p, { status: v }))} options={STATUS_OPTS} error={editErrors.status} />
+            <Select label="Status" value={editLead.status} onChange={(v) => setEditLead((p) => Object.assign({}, p, { status: v, dataFechamento: v !== 'Fechado' ? '' : p.dataFechamento }))} options={STATUS_OPTS} error={editErrors.status} />
             <Input label="Data entrada" type="date" value={editLead.dataEntrada} onChange={(v) => setEditLead((p) => Object.assign({}, p, { dataEntrada: v }))} error={editErrors.dataEntrada} />
+            {editLead.status === 'Fechado' && (
+              <Input label="Data de fechamento" type="date" value={editLead.dataFechamento} onChange={(v) => setEditLead((p) => Object.assign({}, p, { dataFechamento: v }))} error={editErrors.dataFechamento} />
+            )}
             <Input label="Negócio" value={editLead.negocio} onChange={(v) => setEditLead((p) => Object.assign({}, p, { negocio: v }))} error={editErrors.negocio} />
             <Input label="Valor (R$)" type="number" value={editLead.valor} onChange={(v) => setEditLead((p) => Object.assign({}, p, { valor: v }))} error={editErrors.valor} />
           </div>
