@@ -274,9 +274,11 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
   const convLeads = totalLeadsCRM > 0 ? (fechadosCRM / totalLeadsCRM) * 100 : 0;
   const tempoMedio = calcTempoMedio(leads);
 
+  // Faturamento do mês baseado em data_fechamento
   const mStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+  const mEnd = todayStr;
   const fatMes = leads
-    .filter((l) => l.status === 'Fechado' && l.data_entrada >= mStart && l.data_entrada <= todayStr)
+    .filter((l) => l.status === 'Fechado' && l.data_fechamento && l.data_fechamento >= mStart && l.data_fechamento <= mEnd)
     .reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
 
   const buildChart = (period) => {
@@ -381,7 +383,7 @@ export default function TabVisaoGeral({ kpis, leads, readOnly, viewLabel, saveDa
           <MetricTile
             label="Faturamento do mês"
             value={formatBRL(fatMes)}
-            sub={MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear() + ' · leads fechados'}
+            sub={MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear() + ' · por data de fechamento'}
             color={T.success}
           />
           <MetricTile
